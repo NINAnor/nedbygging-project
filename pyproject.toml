@@ -36,8 +36,15 @@ readme = "README.md"
 version = "0.1.0"
 
 [tool.poetry.dependencies]
+ipykernel = "^6.29.5"
 python = "^3.10"
+rasterio = "^1.4.3"
+rioxarray = "^0.18.2"
+scikit-learn = "^1.6.1"
 torchgeo = "^0.6.2"
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
 
 [tool.ruff]
 fix = true
