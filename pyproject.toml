@@ -1,3 +1,7 @@
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
+
 [project]
 authors = [
   {name = "ninanor", email = "taheera.ahmed@nina.no"}
@@ -23,6 +27,17 @@ tools = [
 
 [project.scripts]
 "nedbygging_project_start" = "main:start"
+
+[tool.poetry]
+authors = ["Taheera Ahmed <taheera.ahmed@nina.no>"]
+description = ""
+name = "nedbygging-project"
+readme = "README.md"
+version = "0.1.0"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+torchgeo = "^0.6.2"
 
 [tool.ruff]
 fix = true
