@@ -2,6 +2,7 @@ import logging
 import pathlib
 
 import environ
+import hydra
 
 env = environ.Env()
 BASE_DIR = pathlib.Path(__file__).parent.parent
@@ -12,10 +13,11 @@ DEBUG = env.bool("DEBUG", default=False)
 logging.basicConfig(level=(logging.DEBUG if DEBUG else logging.INFO))
 
 
-def start() -> None:
-    logging.debug("only printed in DEBUG")
-    print("hello world!")
+@hydra.main(version_base=None, config_path="../configs", config_name="config")
+def main(cfg) -> None:
+    logging.info("Hello World!")
+    logging.debug(f"Configuration: {cfg}")
 
 
 if __name__ == "__main__":
-    start()
+    main()
