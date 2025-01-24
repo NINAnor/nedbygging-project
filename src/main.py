@@ -5,12 +5,33 @@ import hydra
 
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+
 from dataset.monthlysampler import loader
 from dataset.augmentations import build_transform
+from dataset.visualisation import plot_batch
 
 BASE_DIR = pathlib.Path(__file__).parent.parent
 
 logging.basicConfig(level=(logging.INFO))
+
+def plotBatch(train_loader, val_loader):
+
+    print("PLOTTING A BATCH OF IMAGE AND MASKS")
+
+    train_batch = next(iter(train_loader))
+    val_batch = next(iter(val_loader))
+
+    plot_batch(train_batch, bright=3., cols=4, width=5, chnls=[0, 1, 2])
+    plt.suptitle('Training Batch')
+    plt.savefig("training_batch.png")
+
+    plot_batch(val_batch, bright=3., cols=4, width=5, chnls=[0, 1, 2])
+    plt.suptitle('Validation Batch')
+    plt.savefig("validation_batch.png")
+
+    exit()
+
 
 
 @hydra.main(version_base=None, config_path="../configs", config_name="config")
@@ -24,8 +45,8 @@ def main(cfg):
     val_path_masks = root/'val_truth'
 
     # instantiate the transform
-    train_transform = build_transform(mode='train')
-    val_transform = build_transform(mode='val')
+    train_transform = build_transform(mode='train', plot_batch=cfg.training.PLOT_BATCH)
+    val_transform = build_transform(mode='val', plot_batch=cfg.training.PLOT_BATCH)
 
     # instantiate the training dataloader
 
@@ -33,30 +54,18 @@ def main(cfg):
                                train_path_masks, 
                                cfg.training.SIZE, 
                                cfg.training.LENGTH, 
-                               cfg.training.BATCH_SIZE_FOR_TRAINING, 
+                               cfg.training.BATCH_SIZE, 
                                transform=train_transform)
     
     val_loader = loader(val_path_imgs, 
                                val_path_masks, 
                                cfg.training.SIZE, 
                                cfg.training.LENGTH, 
-                               cfg.training.BATCH_SIZE_FOR_TRAINING, 
+                               cfg.training.BATCH_SIZE, 
                                transform=val_transform)
 
-    train_batch = next(iter(train_loader))
-    val_batch = next(iter(val_loader))
-
-    print("Train Image Shape:", train_batch['image'].shape)  # expect: (batch_size, 6, H, W)
-    print("Val Image Shape:", val_batch['image'].shape)      # expect: (batch_size, 6, H, W)
-
-    # Checking normalization values
-    print("Train Image Min/Max:", train_batch['image'].min(), train_batch['image'].max())
-    print("Val Image Min/Max:", val_batch['image'].min(), val_batch['image'].max())
-
-
-
-
-
+    if cfg.training.PLOT_BATCH:
+        plotBatch(train_loader, val_loader)
 
 if __name__ == "__main__":
     main()

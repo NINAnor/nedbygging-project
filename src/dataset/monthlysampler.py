@@ -30,8 +30,6 @@ def select_random_month_and_augment(batch, transform):
         image_np = sample['image'].numpy().transpose(1, 2, 0)  # (C, H, W) -> (H, W, C)
         mask_np = np.transpose(sample['mask'].numpy(), (1, 2, 0)).astype(np.uint8)
 
-        print(image_np.shape)
-        print(mask_np.shape)
         # Apply augmentation (only image is normalized)
         augmented = transform(image=image_np, mask=mask_np)
 
