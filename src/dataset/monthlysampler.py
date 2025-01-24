@@ -28,7 +28,7 @@ def select_random_month_and_augment(batch, transform):
 
         # Convert tensors to NumPy for Albumentations processing
         image_np = sample['image'].numpy().transpose(1, 2, 0)  # (C, H, W) -> (H, W, C)
-        mask_np = sample['mask'].numpy().astype(np.uint8)  # Ensure correct mask format
+        mask_np = np.transpose(sample['mask'].numpy(), (1, 2, 0)).astype(np.uint8)
 
         print(image_np.shape)
         print(mask_np.shape)
@@ -37,7 +37,7 @@ def select_random_month_and_augment(batch, transform):
 
         # Convert back to PyTorch tensors
         sample['image'] = torch.tensor(augmented['image']).permute(2, 0, 1)  # (H, W, C) -> (C, H, W)
-        sample['mask'] = torch.tensor(augmented['mask']).unsqueeze(0)  # (H, W) -> (1, H, W)
+        sample['mask'] = torch.tensor(augmented['mask']).permute(2, 0, 1)  # Back to (1, H, W)
 
         sample['selected_month'] = selected_month  # Store the selected month
         augmented_samples.append(sample)
