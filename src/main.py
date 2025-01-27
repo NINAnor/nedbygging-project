@@ -26,6 +26,8 @@ from torchmetrics.classification import MulticlassJaccardIndex
 
 import segmentation_models_pytorch as smp
 
+from hydra.core.hydra_config import HydraConfig
+
 logging.basicConfig(level=(logging.INFO))
 
 torch.backends.cudnn.benchmark = True
@@ -124,6 +126,13 @@ class SegmentationModel(pl.LightningModule):
 def main(cfg):
 
     root = Path(cfg.paths.ROOT_PATH)
+    output_dir = HydraConfig.get().run.dir
+
+    logging.basicConfig(
+        filename=f"{output_dir}/training.log",
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
 
     train_path_imgs = root/'tra_scene'
     train_path_masks = root/'tra_truth'
@@ -166,7 +175,9 @@ def main(cfg):
 
     data_module.setup("fit")
     data_module.setup("validate")
+
     trainer = Trainer(
+        default_root_dir=output_dir,
         max_epochs=cfg.training.NUM_EPOCHS,
         callbacks=[checkpoint_callback, early_stopping_callback],
     )
