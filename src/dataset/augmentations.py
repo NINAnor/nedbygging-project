@@ -29,10 +29,10 @@ def build_transform(mode='train', plot_batch=False):
                 A.VerticalFlip(p=0.5),
                 A.RandomRotate90(p=0.5),
 
-                A.OneOf([
-                    A.RandomBrightnessContrast(p=0.5),
-                    A.GaussNoise(p=0.5),
-                ], p=0.8),
+                #A.OneOf([
+                #    A.RandomBrightnessContrast(p=0.5),
+                #    A.GaussNoise(p=0.5),
+                #], p=0.8),
 
                 A.Normalize(normalization="min_max_per_channel"),
                 ToTensorV2()

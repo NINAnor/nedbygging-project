@@ -1,0 +1,10 @@
+# DataLoader parameters:
+SIZE: 256 # size of the model input image
+LENGTH: 30 # Number of bands in the image
+BATCH_SIZE: 8 # to train the model
+NUM_CLASSES: 9 # number of classes
+
+
+# Plot a batch?
+PLOT_BATCH: True
+

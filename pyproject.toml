@@ -42,6 +42,12 @@ rasterio = "^1.4.3"
 rioxarray = "^0.18.2"
 scikit-learn = "^1.6.1"
 torchgeo = "^0.6.2"
+satlaspretrain-models = "^0.3.1"
+matplotlib = "^3.10.0"
+albumentations = "^2.0.0"
+tifffile = "^2025.1.10"
+ruff = "^0.9.3"
+segmentation-models-pytorch = "^0.4.0"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"
