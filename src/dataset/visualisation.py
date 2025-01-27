@@ -52,3 +52,21 @@ def plot_batch(batch: dict, bright: float = 3., cols: int = 4, width: int = 5, c
     
         elif 'mask' in batch:
             plot_msks(masks=map(lambda x: x['mask'], samples), axs=axs.reshape(-1))
+            
+
+def plotBatch(train_loader, val_loader):
+
+    print("PLOTTING A BATCH OF IMAGE AND MASKS")
+
+    train_batch = next(iter(train_loader))
+    val_batch = next(iter(val_loader))
+
+    plot_batch(train_batch, bright=3., cols=4, width=5, chnls=[0, 1, 2])
+    plt.suptitle('Training Batch')
+    plt.savefig("training_batch.png")
+
+    plot_batch(val_batch, bright=3., cols=4, width=5, chnls=[0, 1, 2])
+    plt.suptitle('Validation Batch')
+    plt.savefig("validation_batch.png")
+
+    exit()
