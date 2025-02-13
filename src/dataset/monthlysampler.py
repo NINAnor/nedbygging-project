@@ -69,6 +69,7 @@ class CustomGeoDataModule(pl.LightningDataModule):
                 raise ValueError("Train dataset is empty!")
 
             self.train_sampler = RandomGeoSampler(
+
                 dataset=self.train_dataset,
                 size=self.patch_size,
                 length=self.length_train,

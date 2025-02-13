@@ -31,8 +31,6 @@ def get_deeplabv3_model(num_classes):
         classes=num_classes,
     )
 
-    # model = models.deeplabv3_resnet50(weights="COCO_WITH_VOC_LABELS_V1")
-    # model.classifier[4] = torch.nn.Conv2d(256, num_classes, kernel_size=(1, 1))
     return model
 
 
