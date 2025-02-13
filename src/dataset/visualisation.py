@@ -13,7 +13,7 @@ def plot_imgs(
         chnls = [0, 1, 2]
 
     for img, ax in zip(images, axs, strict=False):
-        img = img[chnls, :, :]  # take only the 3 first channels (RGB for May)
+        img = img[:, :, chnls]  # take only the 3 first channels (RGB for May)
         img = img.float()
         img = img
 
@@ -22,7 +22,7 @@ def plot_imgs(
         img = (img - img_min) / (img_max - img_min + 1e-8)
 
         arr = torch.clamp(bright * img, min=0, max=1).numpy()
-        rgb = arr.transpose(1, 2, 0)
+        rgb = arr.transpose(0, 1, 2)
 
         ax.imshow(rgb)
         ax.axis("off")
