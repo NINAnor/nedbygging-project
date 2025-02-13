@@ -67,7 +67,7 @@ class CustomGeoDataModule(pl.LightningDataModule):
                 size=self.patch_size, 
                 length=self.length_train, 
                 units=Units.PIXELS
-            )
+            )     
 
         if stage == "validate" or stage is None:
             # Setup validation data
