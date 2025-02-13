@@ -1,72 +1,98 @@
-from typing import Iterable, List
-import torch
+from collections.abc import Iterable
+
 import matplotlib.pyplot as plt
+import torch
 from torchgeo.datasets import unbind_samples
 
-def plot_imgs(images: Iterable, axs: Iterable, chnls: List[int] = [0, 1, 2], bright: float = 3.):
-    for img, ax in zip(images, axs):
+
+def plot_imgs(
+    images: Iterable, axs: Iterable, chnls: list[int] | None = None, bright: float = 3.0
+):
+    # for some reason ruff is complaining about using a "mutable default argument"?
+    if chnls is None:  # Initialize the default inside the function
+        chnls = [0, 1, 2]
+
+    for img, ax in zip(images, axs, strict=False):
         img = img[chnls, :, :]  # take only the 3 first channels (RGB for May)
-        img = img.float() 
-        img = img 
+        img = img.float()
+        img = img
 
         # Normalize the image to the [0, 1] range using min-max normalization
         img_min, img_max = img.min(), img.max()
-        img = (img - img_min) / (img_max - img_min + 1e-8) 
+        img = (img - img_min) / (img_max - img_min + 1e-8)
 
         arr = torch.clamp(bright * img, min=0, max=1).numpy()
-        rgb = arr.transpose(1, 2, 0) 
-          
-                
+        rgb = arr.transpose(1, 2, 0)
+
         ax.imshow(rgb)
-        ax.axis('off')
+        ax.axis("off")
+
 
 def plot_msks(masks: Iterable, axs: Iterable):
-    for mask, ax in zip(masks, axs):
-        ax.imshow(mask.squeeze().numpy(), cmap='Blues')
-        ax.axis('off')
+    for mask, ax in zip(masks, axs, strict=False):
+        ax.imshow(mask.squeeze().numpy(), cmap="Blues")
+        ax.axis("off")
 
-def plot_batch(batch: dict, bright: float = 3., cols: int = 4, width: int = 5, chnls: List[int] = [0, 1, 2]):
+
+def plot_batch(
+    batch: dict,
+    bright: float = 3.0,
+    cols: int = 4,
+    width: int = 5,
+    chnls: list[int] | None = None,
+):
+    # for some reason ruff is complaining about using a "mutable default argument"?
+    if chnls is None:  # Initialize the default inside the function
+        chnls = [0, 1, 2]
     # Get the samples and the number of items in the batch
     samples = unbind_samples(batch.copy())
-    
+
     # if batch contains images and masks, the number of images will be doubled
-    n = 2 * len(samples) if ('image' in batch) and ('mask' in batch) else len(samples)
+    n = 2 * len(samples) if ("image" in batch) and ("mask" in batch) else len(samples)
 
     # calculate the number of rows in the grid
-    rows = n//cols + (1 if n%cols != 0 else 0)
+    rows = n // cols + (1 if n % cols != 0 else 0)
 
     # create a grid
-    _, axs = plt.subplots(rows, cols, figsize=(cols*width, rows*width))  
+    _, axs = plt.subplots(rows, cols, figsize=(cols * width, rows * width))
 
-    if ('image' in batch) and ('mask' in batch):
+    if ("image" in batch) and ("mask" in batch):
         # plot the images on the even axis
-        plot_imgs(images=map(lambda x: x['image'], samples), axs=axs.reshape(-1)[::2], chnls=chnls, bright=bright)
+        plot_imgs(
+            images=map(lambda x: x["image"], samples),
+            axs=axs.reshape(-1)[::2],
+            chnls=chnls,
+            bright=bright,
+        )
 
         # plot the masks on the odd axis
-        plot_msks(masks=map(lambda x: x['mask'], samples), axs=axs.reshape(-1)[1::2])
+        plot_msks(masks=map(lambda x: x["mask"], samples), axs=axs.reshape(-1)[1::2])
 
     else:
+        if "image" in batch:
+            plot_imgs(
+                images=map(lambda x: x["image"], samples),
+                axs=axs.reshape(-1),
+                chnls=chnls,
+                bright=bright,
+            )
 
-        if 'image' in batch:
-            plot_imgs(images=map(lambda x: x['image'], samples), axs=axs.reshape(-1), chnls=chnls, bright=bright)
-    
-        elif 'mask' in batch:
-            plot_msks(masks=map(lambda x: x['mask'], samples), axs=axs.reshape(-1))
-            
+        elif "mask" in batch:
+            plot_msks(masks=map(lambda x: x["mask"], samples), axs=axs.reshape(-1))
+
 
 def plotBatch(train_loader, val_loader):
-
     print("PLOTTING A BATCH OF IMAGE AND MASKS")
 
     train_batch = next(iter(train_loader))
     val_batch = next(iter(val_loader))
 
-    plot_batch(train_batch, bright=3., cols=4, width=5, chnls=[0, 1, 2])
-    plt.suptitle('Training Batch')
+    plot_batch(train_batch, bright=3.0, cols=4, width=5, chnls=[0, 1, 2])
+    plt.suptitle("Training Batch")
     plt.savefig("training_batch.png")
 
-    plot_batch(val_batch, bright=3., cols=4, width=5, chnls=[0, 1, 2])
-    plt.suptitle('Validation Batch')
+    plot_batch(val_batch, bright=3.0, cols=4, width=5, chnls=[0, 1, 2])
+    plt.suptitle("Validation Batch")
     plt.savefig("validation_batch.png")
 
     exit()
