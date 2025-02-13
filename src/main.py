@@ -121,10 +121,10 @@ def main(cfg):
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
 
-    train_path_imgs = root / "tra_scene"
-    train_path_masks = root / "tra_truth"
-    val_path_imgs = root / "val_scene"
-    val_path_masks = root / "val_truth"
+    train_path_imgs = root / "new_train_val_scene" / "train"
+    train_path_masks = root / "new_train_val_truth" / "train"
+    val_path_imgs = root / "new_train_val_scene" / "val"
+    val_path_masks = root / "new_train_val_truth" / "val"
 
     # instantiate the transform
     train_transform = build_transform(mode="train", plot_batch=cfg.training.PLOT_BATCH)
