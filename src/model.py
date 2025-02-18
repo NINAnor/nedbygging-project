@@ -1,3 +1,5 @@
+import logging
+
 import pytorch_lightning as pl
 import segmentation_models_pytorch as smp
 import torch
@@ -91,3 +93,29 @@ class SegmentationModel(pl.LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
+
+
+def load_model(checkpoint_path, num_classes, device):
+    model = get_deeplabv3_model(num_classes)
+    logger = logging.getLogger(__name__)
+    logger.info(f"Loading model from {checkpoint_path}")
+    # Load the saved state dict
+    checkpoint = torch.load(
+        checkpoint_path,
+        weights_only=False,
+        map_location=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+    )
+
+    # Remove the 'model.' prefix from the state_dict keys
+    state_dict = {
+        k.replace("model.", ""): v for k, v in checkpoint["state_dict"].items()
+    }
+
+    # Filter out the auxiliary classifier keys
+    state_dict = {k: v for k, v in state_dict.items() if "aux_classifier" not in k}
+
+    # Load the modified state_dict into the model
+    model.load_state_dict(state_dict, strict=False)
+    model.to(device)
+    model.eval()  # Set the model to evaluation mode
+    return model
