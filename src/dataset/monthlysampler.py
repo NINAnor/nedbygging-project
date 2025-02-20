@@ -69,7 +69,6 @@ class CustomGeoDataModule(pl.LightningDataModule):
                 raise ValueError("Train dataset is empty!")
 
             self.train_sampler = RandomGeoSampler(
-
                 dataset=self.train_dataset,
                 size=self.patch_size,
                 length=self.length_train,
@@ -137,46 +136,36 @@ class CustomGeoDataModule(pl.LightningDataModule):
 
     def _apply_transform(self, batch, transform):
         """Apply the provided transformation to the batch."""
-        num_months = 5
-        bands_per_month = 6
-
+        num_months, bands_per_month = 5, 6
         augmented_samples = []
 
         for sample in batch:
             image = sample["image"].clone().detach()
-            # mask = sample["mask"].clone().detach()
-
-            # Select a random month
             selected_month = random.randint(0, num_months - 1)  # noqa: S311
-            band_start = selected_month * bands_per_month
-            band_end = band_start + bands_per_month
+            band_start, band_end = (
+                selected_month * bands_per_month,
+                (selected_month + 1) * bands_per_month,
+            )
+            sample["image"] = image[band_start:band_end]
 
-            sample["image"] = image[band_start:band_end, :, :]
-
-            # Convert tensors to numpy for augmentation
+            # convert tensors to numpy
             image_np = sample["image"].numpy().transpose(1, 2, 0)
-            mask_np = sample["mask"].numpy().astype(np.uint8).transpose(1, 2, 0)
+            mask_np = (
+                sample["mask"].numpy().astype(np.uint8).transpose(1, 2, 0)
+                if "mask" in sample
+                else None
+            )
 
-            # Apply augmentation if transform is provided
-            if transform is not None:
-                augmented = transform(image=image_np, mask=mask_np)
+            # apply augmentation if transform is provided
+            if transform:
+                augmented = (
+                    transform(image=image_np, mask=mask_np)
+                    if mask_np is not None
+                    else transform(image=image_np)
+                )
+                sample["image"] = augmented["image"].clone().detach()
 
-                # Ensure 'augmented' outputs are numpy arrays before conversion
-                if isinstance(augmented["image"], np.ndarray):
-                    sample["image"] = (
-                        torch.from_numpy(augmented["image"]).clone().detach()
-                    )
-                else:
-                    sample["image"] = augmented["image"].clone().detach()
-
-                if isinstance(augmented["mask"], np.ndarray):
-                    sample["mask"] = (
-                        torch.from_numpy(augmented["mask"])
-                        .clone()
-                        .detach()
-                        .permute(2, 0, 1)
-                    )
-                else:
+                if "mask" in sample:
                     sample["mask"] = augmented["mask"].clone().detach().permute(2, 0, 1)
             else:
                 sample["image"] = (
@@ -184,11 +173,9 @@ class CustomGeoDataModule(pl.LightningDataModule):
                 )
                 sample["mask"] = torch.tensor(mask_np).clone().detach().permute(2, 0, 1)
 
-            augmented_samples.append(sample)
+            for attr in ("crs", "bounds"):
+                sample.pop(attr, None)
 
-        # Remove frozen attributes
-        for sample in augmented_samples:
-            sample.pop("crs", None)
-            sample.pop("bounds", None)
+            augmented_samples.append(sample)
 
         return stack_samples(augmented_samples)
