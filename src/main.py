@@ -38,6 +38,9 @@ def main(cfg):
     train_transform = build_transform(mode="train")
     val_transform = build_transform(mode="val")
 
+    logger.info(f"Train transform: {train_transform}")
+    logger.info(f"Val transform: {val_transform}")
+
     data_module = CustomGeoDataModule(
         train_img_path=train_path_imgs,
         train_mask_path=train_path_masks,
