@@ -4,8 +4,34 @@ import pytorch_lightning as pl
 import segmentation_models_pytorch as smp
 import torch
 import torch.nn.functional as F
-import torchmetrics
-from torchmetrics.classification import MulticlassJaccardIndex
+from torchmetrics.classification import (
+    MulticlassAccuracy,
+    MulticlassJaccardIndex,
+    MulticlassPrecision,
+    MulticlassRecall,
+)
+
+from utils import CLASS_LABELS
+
+
+def dice_loss(pred, target, num_classes, smooth=1.0):
+    """Computes Dice Loss for multi-class segmentation."""
+    pred = F.softmax(pred, dim=1)  # Apply softmax to get class probabilities
+    target_one_hot = F.one_hot(target, num_classes).permute(0, 3, 1, 2).float()
+
+    intersection = (pred * target_one_hot).sum(dim=(2, 3))
+    union = pred.sum(dim=(2, 3)) + target_one_hot.sum(dim=(2, 3))
+
+    dice = (2.0 * intersection + smooth) / (union + smooth)
+    return 1 - dice.mean()  # Dice Loss
+
+
+def focal_loss(pred, target, alpha=0.25, gamma=2.0):
+    """Computes Focal Loss for multi-class segmentation."""
+    ce_loss = F.cross_entropy(pred, target, reduction="none")
+    pt = torch.exp(-ce_loss)  # Probability of correct class
+    focal = alpha * (1 - pt) ** gamma * ce_loss
+    return focal.mean()
 
 
 def get_deeplabv3_model(num_classes):
@@ -26,30 +52,51 @@ class SegmentationModel(pl.LightningModule):
         self.lr = lr
         self.num_classes = num_classes
 
-        # Metrics from torchmetrics
-        self.train_accuracy = torchmetrics.Accuracy(
-            task="multiclass", num_classes=num_classes, ignore_index=-1
+        # overall metrics
+        self.train_accuracy = MulticlassAccuracy(
+            num_classes=num_classes, average="macro"
         )
-        self.train_precision = torchmetrics.Precision(
-            task="multiclass", num_classes=num_classes, average="macro", ignore_index=-1
+        self.train_precision = MulticlassPrecision(
+            num_classes=num_classes, average="macro"
         )
-        self.train_recall = torchmetrics.Recall(
-            task="multiclass", num_classes=num_classes, average="macro", ignore_index=-1
-        )
+        self.train_recall = MulticlassRecall(num_classes=num_classes, average="macro")
         self.train_iou = MulticlassJaccardIndex(
-            num_classes=num_classes, ignore_index=-1
+            num_classes=num_classes, average="macro"
         )
 
-        self.val_accuracy = torchmetrics.Accuracy(
-            task="multiclass", num_classes=num_classes, ignore_index=-1
+        self.val_accuracy = MulticlassAccuracy(num_classes=num_classes, average="macro")
+        self.val_precision = MulticlassPrecision(
+            num_classes=num_classes, average="macro"
         )
-        self.val_precision = torchmetrics.Precision(
-            task="multiclass", num_classes=num_classes, average="macro", ignore_index=-1
+        self.val_recall = MulticlassRecall(num_classes=num_classes, average="macro")
+        self.val_iou = MulticlassJaccardIndex(num_classes=num_classes, average="macro")
+
+        # class-wise metrics
+        self.train_class_accuracy = MulticlassAccuracy(
+            num_classes=num_classes, average=None
         )
-        self.val_recall = torchmetrics.Recall(
-            task="multiclass", num_classes=num_classes, average="macro", ignore_index=-1
+        self.val_class_accuracy = MulticlassAccuracy(
+            num_classes=num_classes, average=None
         )
-        self.val_iou = MulticlassJaccardIndex(num_classes=num_classes, ignore_index=-1)
+
+        self.train_class_precision = MulticlassPrecision(
+            num_classes=num_classes, average=None
+        )
+        self.val_class_precision = MulticlassPrecision(
+            num_classes=num_classes, average=None
+        )
+
+        self.train_class_recall = MulticlassRecall(
+            num_classes=num_classes, average=None
+        )
+        self.val_class_recall = MulticlassRecall(num_classes=num_classes, average=None)
+
+        self.train_class_iou = MulticlassJaccardIndex(
+            num_classes=num_classes, average=None
+        )
+        self.val_class_iou = MulticlassJaccardIndex(
+            num_classes=num_classes, average=None
+        )
 
     def forward(self, x):
         return self.model(x)
@@ -60,16 +107,40 @@ class SegmentationModel(pl.LightningModule):
 
         outputs = self(images)
 
-        loss = F.cross_entropy(outputs, masks, ignore_index=-1)
+        # Compute losses
+        # dice = dice_loss(outputs, masks, num_classes=self.num_classes)
+        # focal = focal_loss(outputs, masks)
+        # self.log("train_dice_loss", dice, prog_bar=True, on_epoch=True)
+        # self.log("train_focal_loss", focal, prog_bar=True, on_epoch=True)
+        # loss = 0.5 * dice + 0.5 * focal  # Combined loss
+
+        loss = F.cross_entropy(outputs, masks)
+        self.log("train_loss", loss, prog_bar=True, on_epoch=True)
 
         pred = torch.argmax(outputs, dim=1)
 
-        # Log metrics using torchmetrics
-        self.log("train_loss", loss)
+        # Log overall losses
+
+        # Log overall metrics
         self.log("train_accuracy", self.train_accuracy(pred, masks))
         self.log("train_precision", self.train_precision(pred, masks))
         self.log("train_recall", self.train_recall(pred, masks))
         self.log("train_iou", self.train_iou(pred, masks))
+
+        # Log class-wise metrics
+        class_accuracy = self.train_class_accuracy(pred, masks)
+        class_precision = self.train_class_precision(pred, masks)
+        class_recall = self.train_class_recall(pred, masks)
+        class_iou = self.train_class_iou(pred, masks)
+
+        for label, index in CLASS_LABELS.items():
+            classname = (
+                f"train_class_{label}"  # Using the string label from the dictionary
+            )
+            self.log(f"{classname}_accuracy", class_accuracy[index])
+            self.log(f"{classname}_precision", class_precision[index])
+            self.log(f"{classname}_recall", class_recall[index])
+            self.log(f"{classname}_iou", class_iou[index])
 
         return loss
 
@@ -78,16 +149,41 @@ class SegmentationModel(pl.LightningModule):
         masks = batch["mask"].squeeze(1).long()
         outputs = self(images)
 
-        val_loss = F.cross_entropy(outputs, masks, ignore_index=-1)
+        # Compute losses
+        # dice = dice_loss(outputs, masks, num_classes=self.num_classes)
+        # focal = focal_loss(outputs, masks)
+        # self.log("val_dice_loss", dice, prog_bar=True, on_epoch=True)
+        # self.log("val_focal_loss", focal, prog_bar=True, on_epoch=True)
+
+        # val_loss = 0.5 * dice + 0.5 * focal
+
+        val_loss = F.cross_entropy(outputs, masks)
 
         pred = torch.argmax(outputs, dim=1)
 
-        # Log validation metrics
-        self.log("val_loss", val_loss)
+        # Log overall losses
+        self.log("val_loss", val_loss, prog_bar=True, on_epoch=True)
+
+        # Log overall metrics
         self.log("val_accuracy", self.val_accuracy(pred, masks))
         self.log("val_precision", self.val_precision(pred, masks))
         self.log("val_recall", self.val_recall(pred, masks))
         self.log("val_iou", self.val_iou(pred, masks))
+
+        # Log class-wise metrics
+        class_accuracy = self.val_class_accuracy(pred, masks)
+        class_precision = self.val_class_precision(pred, masks)
+        class_recall = self.val_class_recall(pred, masks)
+        class_iou = self.val_class_iou(pred, masks)
+
+        for label, index in CLASS_LABELS.items():
+            classname = (
+                f"val_class_{label}"  # Using the string label from the dictionary
+            )
+            self.log(f"{classname}_accuracy", class_accuracy[index])
+            self.log(f"{classname}_precision", class_precision[index])
+            self.log(f"{classname}_recall", class_recall[index])
+            self.log(f"{classname}_iou", class_iou[index])
 
         return val_loss
 
