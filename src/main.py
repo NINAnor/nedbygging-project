@@ -14,8 +14,6 @@ from dataset.monthlysampler import CustomGeoDataModule
 from dataset.visualisation import plotBatch
 from model import SegmentationModel
 
-logging.basicConfig(level=(logging.INFO))
-
 torch.backends.cudnn.benchmark = True
 
 
@@ -23,12 +21,13 @@ torch.backends.cudnn.benchmark = True
 def main(cfg):
     root = Path(cfg.paths.ROOT_PATH)
     output_dir = HydraConfig.get().run.dir
-
     logging.basicConfig(
         filename=f"{output_dir}/training.log",
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
+    logger = logging.getLogger(__name__)
+    logger.info(f"Files will be saved to: {output_dir}")
 
     train_path_imgs = root / "new_train_val_scene" / "train"
     train_path_masks = root / "new_train_val_truth" / "train"
@@ -36,8 +35,8 @@ def main(cfg):
     val_path_masks = root / "new_train_val_truth" / "val"
 
     # instantiate the transform
-    train_transform = build_transform(mode="train", plot_batch=cfg.training.PLOT_BATCH)
-    val_transform = build_transform(mode="val", plot_batch=cfg.training.PLOT_BATCH)
+    train_transform = build_transform(mode="train")
+    val_transform = build_transform(mode="val")
 
     data_module = CustomGeoDataModule(
         train_img_path=train_path_imgs,
@@ -51,11 +50,13 @@ def main(cfg):
         train_transform=train_transform,
         val_transform=val_transform,
     )
+    data_module.setup("fit")
+    data_module.setup("validate")
 
     if cfg.training.PLOT_BATCH:
         train_loader = data_module.train_dataloader()
         val_loader = data_module.val_dataloader()
-        plotBatch(train_loader, val_loader)
+        plotBatch(output_dir, train_loader, val_loader)
 
     num_classes = cfg.training.NUM_CLASSES
     model = SegmentationModel(num_classes=num_classes, lr=cfg.training.LR)
@@ -68,9 +69,6 @@ def main(cfg):
         verbose=True,
         mode="min",
     )
-
-    data_module.setup("fit")
-    data_module.setup("validate")
 
     trainer = Trainer(
         default_root_dir=output_dir,

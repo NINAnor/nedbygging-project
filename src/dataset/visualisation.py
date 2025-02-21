@@ -6,41 +6,46 @@ from matplotlib.colors import ListedColormap
 from matplotlib.patches import Patch
 from torchgeo.datasets import unbind_samples
 
+from utils import CLASS_LABELS
+
+
+def get_color_map_and_legend():
+    class_colors = [
+        "black",
+        "red",
+        "yellow",
+        "lime",
+        "green",
+        "purple",
+        "cyan",
+        "magenta",
+        "blue",
+    ]
+
+    legend_elements = [
+        Patch(facecolor=class_colors[i], edgecolor="black", label=label)
+        for i, label in enumerate(CLASS_LABELS.keys())
+    ]
+    return class_colors, legend_elements
+
 
 def plot_imgs(
     images: Iterable, axs: Iterable, chnls: list[int] | None = None, bright: float = 0.0
 ):
-    # for some reason ruff is complaining about using a "mutable default argument"?
-    if chnls is None:  # Initialize the default inside the function
-        chnls = [0, 1, 2]
-
     for img, ax in zip(images, axs, strict=False):
-        img = img[:, :, chnls]  # take only the 3 first channels (RGB for May)
         img = img.float()
-        img = img
-
-        # Normalize the image to the [0, 1] range using min-max normalization
-        img_min, img_max = img.min(), img.max()
-        img = (img - img_min) / (img_max - img_min + 1e-8)
-
+        img = img.permute(chnls)
+        img = img[:, :, :3]
         if bright != 0.0:
-            img_arr = torch.clamp(bright * img, min=0, max=1).numpy()
-        else:
-            img_arr = img.numpy()
-        rgb = img_arr.transpose(0, 1, 2)
+            img = torch.clamp(bright * img, min=0, max=1).numpy()
+        img = img.numpy()
 
-        ax.imshow(rgb)
+        ax.imshow(img)
         ax.axis("off")
 
 
 def plot_msks(masks: Iterable, axs: Iterable):
-    class_labels = ["urban", "cropland", "grass", "forest", "wetland", "water"]
-    class_colors = ["red", "yellow", "lime", "green", "purple", "blue"]
-
-    legend_elements = [
-        Patch(facecolor=color, edgecolor="black", label=label)
-        for color, label in zip(class_colors, class_labels, strict=False)
-    ]
+    class_colors, legend_elements = get_color_map_and_legend()
     for mask, ax in zip(masks, axs, strict=False):
         ax.imshow(mask.squeeze().numpy(), cmap=ListedColormap(class_colors))
         ax.axis("off")
@@ -95,15 +100,14 @@ def plot_batch(
             plot_msks(masks=map(lambda x: x["mask"], samples), axs=axs.reshape(-1))
 
 
-def plotBatch(train_loader, val_loader):
+def plotBatch(output_folder, train_loader, val_loader):
     train_batch = next(iter(train_loader))
     val_batch = next(iter(val_loader))
 
     plot_batch(train_batch, cols=4, width=5, chnls=[2, 1, 0])
     plt.suptitle("Training Batch")
-    plt.savefig("training_batch.png")
+    plt.savefig(f"{output_folder}/training_batch.png")
 
     plot_batch(val_batch, cols=4, width=5, chnls=[2, 1, 0])
     plt.suptitle("Validation Batch")
-    plt.savefig("validation_batch.png")
-    exit()
+    plt.savefig(f"{output_folder}/validation_batch.png")
