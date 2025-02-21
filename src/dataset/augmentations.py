@@ -69,7 +69,7 @@ def preprocess_image(image, **kwargs):
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
             A.RandomRotate90(p=0.5),
-            A.Lambda(image=preprocess_image),
+            A.Lambda(image=preprocess_image), # <----here
             ToTensorV2(),
         ]
 
@@ -86,7 +86,7 @@ def build_transform(mode="train"):
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
             A.RandomRotate90(p=0.5),
-            A.Normalize(),
+            A.Lambda(name="normalize_percentile", image=preprocess_image),
             ToTensorV2(),
         ]
 
@@ -99,7 +99,7 @@ def build_transform(mode="train"):
     elif mode == "val" or mode == "test":
         print("Applying validation/test transforms.")
         val_transforms = [
-            A.Normalize(),
+            A.Lambda(name="normalize_percentile", image=preprocess_image),
             ToTensorV2(),
         ]
 
