@@ -104,10 +104,10 @@ def plotBatch(output_folder, train_loader, val_loader):
     train_batch = next(iter(train_loader))
     val_batch = next(iter(val_loader))
 
-    plot_batch(train_batch, cols=4, width=5, chnls=[2, 1, 0])
+    plot_batch(train_batch, cols=4, width=5, chnls=[1, 2, 0])
     plt.suptitle("Training Batch")
     plt.savefig(f"{output_folder}/training_batch.png")
 
-    plot_batch(val_batch, cols=4, width=5, chnls=[2, 1, 0])
+    plot_batch(val_batch, cols=4, width=5, chnls=[1, 2, 0])
     plt.suptitle("Validation Batch")
     plt.savefig(f"{output_folder}/validation_batch.png")

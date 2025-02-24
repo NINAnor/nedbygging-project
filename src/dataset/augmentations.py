@@ -82,30 +82,27 @@ def build_transform(mode="train"):
     logger = logging.getLogger(__name__)
 
     if mode == "train":
-        train_transforms = [
-            A.HorizontalFlip(p=0.5),
-            A.VerticalFlip(p=0.5),
-            A.RandomRotate90(p=0.5),
-            A.Lambda(name="normalize_percentile", image=preprocess_image),
-            ToTensorV2(),
-        ]
-
         transform = A.Compose(
-            train_transforms,
+            [
+                A.HorizontalFlip(p=0.5),
+                A.VerticalFlip(p=0.5),
+                A.RandomRotate90(p=0.5),
+                A.Lambda(name="normalize_percentile", image=preprocess_image),
+                ToTensorV2(),
+            ],
             additional_targets={"mask": "mask"},
         )
-        logger.info(f"Training transforms: {train_transforms}")
+        logger.info(f"Training transforms: {transform}")
 
     elif mode == "val" or mode == "test":
         print("Applying validation/test transforms.")
-        val_transforms = [
-            A.Lambda(name="normalize_percentile", image=preprocess_image),
-            ToTensorV2(),
-        ]
 
         transform = A.Compose(
-            val_transforms,
+            [
+                A.Lambda(name="normalize_percentile", image=preprocess_image),
+                ToTensorV2(),
+            ],
             additional_targets={"mask": "mask"},
         )
-        logger.info(f"Validation/test transforms: {val_transforms}")
+        logger.info(f"Validation/test transforms: {transform}")
     return transform
