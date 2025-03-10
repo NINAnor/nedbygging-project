@@ -4,19 +4,6 @@ import numpy as np
 from scipy.special import expit as sigmoid
 
 
-def batch_normalize(batch, axis=(2, 3), c=1e-8):
-    """
-    Normalize a batch to zero mean and unit standard deviation.
-    Args:
-        batch (torch.Tensor): (N, C, H, W) shape
-        axis (tuple): Axes over which to normalize (height, width)
-        c (float): Small constant to avoid division by zero
-    """
-    mean = batch.mean(dim=axis, keepdim=True)
-    std = batch.std(dim=axis, keepdim=True) + c
-    return (batch - mean) / std
-
-
 def normalize_percentile_per_channel(image, percentiles=(2, 98), **kwargs):
     """Normalize each band independently using percentile clipping."""
     normalized_image = np.zeros_like(image, dtype=np.float32)

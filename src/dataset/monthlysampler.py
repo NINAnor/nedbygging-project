@@ -8,8 +8,6 @@ from torch.utils.data import DataLoader
 from torchgeo.datasets import RasterDataset, stack_samples
 from torchgeo.samplers import RandomGeoSampler, Units
 
-from .normalizers import batch_normalize
-
 
 class CustomGeoDataModule(pl.LightningDataModule):
     def __init__(
@@ -195,8 +193,5 @@ class CustomGeoDataModule(pl.LightningDataModule):
             sample.pop("bounds", None)
 
         stacked_batch = stack_samples(augmented_samples)
-
-        if self.standardize:
-            stacked_batch["image"] = batch_normalize(stacked_batch["image"])
 
         return stacked_batch
