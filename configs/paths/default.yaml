@@ -1,2 +1,5 @@
 # TRAINING DATA
-ROOT_PATH: 
+ROOT_PATH: /home/taheera.ahmed/data/nedbygging/
+OUTPUT_PATH: /home/taheera.ahmed/data/nedbygging/pred_masks
+
+CHECKPOINT_PATH: /home/taheera.ahmed/code/nedbygging-project/outputs/2025-02-14/10-25-15/lightning_logs/version_0/checkpoints/epoch=24-step=625.ckpt

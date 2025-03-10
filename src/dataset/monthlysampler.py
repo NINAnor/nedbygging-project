@@ -8,6 +8,8 @@ from torch.utils.data import DataLoader
 from torchgeo.datasets import RasterDataset, stack_samples
 from torchgeo.samplers import RandomGeoSampler, Units
 
+from .normalizers import batch_normalize
+
 
 class CustomGeoDataModule(pl.LightningDataModule):
     def __init__(
@@ -20,12 +22,14 @@ class CustomGeoDataModule(pl.LightningDataModule):
         patch_size: int,
         length_train: int,
         length_validate: int,
+        standardize: bool,
         num_workers: int = 4,
         train_transform=None,
         val_transform=None,
     ):
         super().__init__()
         self.save_hyperparameters(ignore=["train_transform", "val_transform"])
+        self.standardize = standardize
 
         # Store parameters
         self.batch_size = batch_size
@@ -190,4 +194,9 @@ class CustomGeoDataModule(pl.LightningDataModule):
             sample.pop("crs", None)
             sample.pop("bounds", None)
 
-        return stack_samples(augmented_samples)
+        stacked_batch = stack_samples(augmented_samples)
+
+        if self.standardize:
+            stacked_batch["image"] = batch_normalize(stacked_batch["image"])
+
+        return stacked_batch

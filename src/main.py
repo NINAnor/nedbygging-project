@@ -11,7 +11,7 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
 from dataset.augmentations import build_transform
 from dataset.monthlysampler import CustomGeoDataModule
-from dataset.visualisation import plotBatch
+from dataset.visualisation import plot_batch
 from model import SegmentationModel
 
 torch.backends.cudnn.benchmark = True
@@ -35,11 +35,8 @@ def main(cfg):
     val_path_masks = root / "new_train_val_truth" / "val"
 
     # instantiate the transform
-    train_transform = build_transform(mode="train")
-    val_transform = build_transform(mode="val")
-
-    logger.info(f"Train transform: {train_transform}")
-    logger.info(f"Val transform: {val_transform}")
+    train_transform = build_transform(mode="train", normalize_conf=cfg.data.NORMALIZE)
+    val_transform = build_transform(mode="val", normalize_conf=cfg.data.NORMALIZE)
 
     data_module = CustomGeoDataModule(
         train_img_path=train_path_imgs,
@@ -52,6 +49,7 @@ def main(cfg):
         length_validate=cfg.training.LENGTH_VALIDATE,
         train_transform=train_transform,
         val_transform=val_transform,
+        standardize=cfg.data.STANDARDIZE,
     )
     data_module.setup("fit")
     data_module.setup("validate")
@@ -59,10 +57,15 @@ def main(cfg):
     if cfg.training.PLOT_BATCH:
         train_loader = data_module.train_dataloader()
         val_loader = data_module.val_dataloader()
-        plotBatch(output_dir, train_loader, val_loader)
+        plot_batch(output_dir, train_loader, val_loader)
 
     num_classes = cfg.training.NUM_CLASSES
-    model = SegmentationModel(num_classes=num_classes, lr=cfg.training.LR)
+    model = SegmentationModel(
+        num_classes=num_classes,
+        lr=cfg.training.LR,
+        criterion=cfg.training.LOSS,
+        model_cfg=cfg.training.MODEL,
+    )
 
     checkpoint_callback = ModelCheckpoint(monitor="val_loss")
 
@@ -74,6 +77,7 @@ def main(cfg):
     )
 
     trainer = Trainer(
+        log_every_n_steps=3,
         default_root_dir=output_dir,
         max_epochs=cfg.training.NUM_EPOCHS,
         callbacks=[checkpoint_callback, early_stopping_callback],

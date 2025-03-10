@@ -1,3 +1,4 @@
-defaults: 
+defaults:
   - paths: default
   - training: default
+  - data: default

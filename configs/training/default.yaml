@@ -2,7 +2,7 @@
 PATCH_SIZE: 256 # size of the model input image
 LENGTH_TRAIN: 50 # Number of bands in the image
 LENGTH_VALIDATE: 20
-BATCH_SIZE: 2 # to train the model
+BATCH_SIZE: 16 # to train the model
 
 # Training parameters:
 NUM_CLASSES: 9 # number of classes
@@ -10,6 +10,8 @@ PATIENCE: 7 # Patience for the early stopping callback
 LR: 0.0001
 NUM_WORKERS: 8
 NUM_EPOCHS: 1000
+LOSS: 'dice' # 'cross_entropy' or 'dice'
 
 # Plot a batch?
 PLOT_BATCH: True
+MODEL: 'deeplabv3' # 'unet' or 'deeplabv3'

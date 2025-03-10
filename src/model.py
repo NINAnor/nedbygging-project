@@ -34,23 +34,33 @@ def focal_loss(pred, target, alpha=0.25, gamma=2.0):
     return focal.mean()
 
 
-def get_deeplabv3_model(num_classes):
-    model = smp.DeepLabV3Plus(
-        encoder_name="resnet34",
-        encoder_weights="imagenet",
-        in_channels=6,
-        classes=num_classes,
-    )
+def get_model(model_cfg, num_classes):
+    if model_cfg == "deeplabv3":
+        model = smp.DeepLabV3Plus(
+            encoder_name="resnet34",
+            encoder_weights="imagenet",
+            in_channels=6,
+            classes=num_classes,
+        )
+
+    elif model_cfg == "unet":
+        model = smp.Unet(
+            encoder_name="resnet34",
+            encoder_weights="imagenet",
+            in_channels=6,
+            classes=num_classes,
+        )
 
     return model
 
 
 class SegmentationModel(pl.LightningModule):
-    def __init__(self, num_classes, lr=1e-4):
+    def __init__(self, num_classes, criterion, model_cfg, lr=1e-4):
         super().__init__()
-        self.model = get_deeplabv3_model(num_classes)
+        self.model = get_model(model_cfg, num_classes)
         self.lr = lr
         self.num_classes = num_classes
+        self.criterion = criterion
 
         # overall metrics
         self.train_accuracy = MulticlassAccuracy(
@@ -108,18 +118,18 @@ class SegmentationModel(pl.LightningModule):
         outputs = self(images)
 
         # Compute losses
-        # dice = dice_loss(outputs, masks, num_classes=self.num_classes)
-        # focal = focal_loss(outputs, masks)
-        # self.log("train_dice_loss", dice, prog_bar=True, on_epoch=True)
-        # self.log("train_focal_loss", focal, prog_bar=True, on_epoch=True)
-        # loss = 0.5 * dice + 0.5 * focal  # Combined loss
+        if self.criterion == "dice":
+            dice = dice_loss(outputs, masks, num_classes=self.num_classes)
+            focal = focal_loss(outputs, masks)
+            self.log("train_dice_loss", dice, prog_bar=True, on_epoch=True)
+            self.log("train_focal_loss", focal, prog_bar=True, on_epoch=True)
+            train_loss = 0.5 * dice + 0.5 * focal
+        elif self.criterion == "cross_entropy":
+            train_loss = F.cross_entropy(outputs, masks)
 
-        loss = F.cross_entropy(outputs, masks)
-        self.log("train_loss", loss, prog_bar=True, on_epoch=True)
+        self.log("train_loss", train_loss, prog_bar=True, on_epoch=True)
 
         pred = torch.argmax(outputs, dim=1)
-
-        # Log overall losses
 
         # Log overall metrics
         self.log("train_accuracy", self.train_accuracy(pred, masks))
@@ -142,7 +152,7 @@ class SegmentationModel(pl.LightningModule):
             self.log(f"{classname}_recall", class_recall[index])
             self.log(f"{classname}_iou", class_iou[index])
 
-        return loss
+        return train_loss
 
     def validation_step(self, batch, batch_idx):
         images = batch["image"]
@@ -150,14 +160,14 @@ class SegmentationModel(pl.LightningModule):
         outputs = self(images)
 
         # Compute losses
-        # dice = dice_loss(outputs, masks, num_classes=self.num_classes)
-        # focal = focal_loss(outputs, masks)
-        # self.log("val_dice_loss", dice, prog_bar=True, on_epoch=True)
-        # self.log("val_focal_loss", focal, prog_bar=True, on_epoch=True)
-
-        # val_loss = 0.5 * dice + 0.5 * focal
-
-        val_loss = F.cross_entropy(outputs, masks)
+        if self.criterion == "dice":
+            dice = dice_loss(outputs, masks, num_classes=self.num_classes)
+            focal = focal_loss(outputs, masks)
+            self.log("val_dice_loss", dice, prog_bar=True, on_epoch=True)
+            self.log("val_focal_loss", focal, prog_bar=True, on_epoch=True)
+            val_loss = 0.5 * dice + 0.5 * focal
+        elif self.criterion == "cross_entropy":
+            val_loss = F.cross_entropy(outputs, masks)
 
         pred = torch.argmax(outputs, dim=1)
 
@@ -192,7 +202,7 @@ class SegmentationModel(pl.LightningModule):
 
 
 def load_model(checkpoint_path, num_classes, device):
-    model = get_deeplabv3_model(num_classes)
+    model = get_model(num_classes)
     logger = logging.getLogger(__name__)
     logger.info(f"Loading model from {checkpoint_path}")
     # Load the saved state dict

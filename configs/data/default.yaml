@@ -1,0 +1,2 @@
+STANDARDIZE: False # batch normalization
+NORMALIZE: percentile # min-max, percentile, clahe, dynamic-world
