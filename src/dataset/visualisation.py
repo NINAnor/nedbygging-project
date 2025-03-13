@@ -53,8 +53,10 @@ def plot_msks(masks: Iterable, axs: Iterable):
     axs[0].legend(handles=legend_elements, loc="upper right", title="Classes")
 
 
-def plot_batch(
+def plot_rgb_masks(
     batch: dict,
+    save_path,
+    title: str = "",
     bright: float = 0.0,
     cols: int = 4,
     width: int = 5,
@@ -99,15 +101,61 @@ def plot_batch(
         elif "mask" in batch:
             plot_msks(masks=map(lambda x: x["mask"], samples), axs=axs.reshape(-1))
 
+    plt.suptitle(title)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
 
-def plotBatch(output_folder, train_loader, val_loader):
+
+def plot_nir_swir(batch, title, save_path, nir_idx=4, swir_idx=5):
+    batch_size = batch.shape[0]
+    fig, axes = plt.subplots(batch_size, 2, figsize=(6, 3 * batch_size))
+
+    for i in range(batch_size):
+        nir = batch[i, nir_idx].numpy()
+        swir = batch[i, swir_idx].numpy()
+
+        axes[i, 0].imshow(nir, cmap="gray")
+        axes[i, 0].set_title(f"Sample {i + 1} - NIR")
+
+        axes[i, 1].imshow(swir, cmap="gray")
+        axes[i, 1].set_title(f"Sample {i + 1} - SWIR")
+
+        for ax in axes[i]:
+            ax.axis("off")
+
+    plt.suptitle(title)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_batch(output_folder, train_loader, val_loader):
     train_batch = next(iter(train_loader))
     val_batch = next(iter(val_loader))
 
-    plot_batch(train_batch, cols=4, width=5, chnls=[1, 2, 0])
-    plt.suptitle("Training Batch")
-    plt.savefig(f"{output_folder}/training_batch.png")
+    plot_rgb_masks(
+        train_batch,
+        save_path=f"{output_folder}/train_batch.png",
+        cols=4,
+        width=5,
+        chnls=[1, 2, 0],
+    )
+    plot_nir_swir(
+        train_batch["image"],
+        title="Training Batch",
+        save_path=f"{output_folder}/train_nir_swir.png",
+    )
 
-    plot_batch(val_batch, cols=4, width=5, chnls=[1, 2, 0])
-    plt.suptitle("Validation Batch")
-    plt.savefig(f"{output_folder}/validation_batch.png")
+    plot_rgb_masks(
+        val_batch,
+        save_path=f"{output_folder}/val_batch.png",
+        cols=4,
+        width=5,
+        chnls=[1, 2, 0],
+    )
+    plot_nir_swir(
+        val_batch["image"],
+        title="Validation Batch",
+        save_path=f"{output_folder}/val_nir_swir.png",
+    )

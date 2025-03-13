@@ -4,9 +4,56 @@ from pathlib import Path
 import numpy as np
 import pytorch_lightning as pl
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from torchgeo.datasets import RasterDataset, stack_samples
 from torchgeo.samplers import RandomGeoSampler, Units
+
+from .normalizers import (
+    adaptive_histogram_equalization,
+    dynamic_world_normalization,
+    normalize_min_max_image,
+    normalize_percentile,
+    normalize_percentile_per_channel,
+)
+
+
+class NormalizedRasterDataset(Dataset):
+    """Dataset wrapper that applies normalization on-the-fly before sampling."""
+
+    def __init__(self, dataset, normalize_conf):
+        self.dataset = dataset
+        self.normalize_conf = normalize_conf
+
+        # Forward the spatial index and other attributes needed by RandomGeoSampler
+        self.index = dataset.index if hasattr(dataset, "index") else None
+        self.crs = dataset.crs if hasattr(dataset, "crs") else None
+        self.res = dataset.res if hasattr(dataset, "res") else None
+        self.is_image = dataset.is_image if hasattr(dataset, "is_image") else None
+
+        # Forward any other attributes that might be needed by the sampler
+        self._bounds = dataset._bounds if hasattr(dataset, "_bounds") else None
+
+    def __getitem__(self, index):
+        sample = self.dataset[index]
+        if self.normalize_conf and "image" in sample:
+            sample["image"] = self._normalize_sample(sample["image"])
+        return sample
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def _normalize_sample(self, image):
+        """Normalize a single sample."""
+        normalize_functions = {
+            "clahe": adaptive_histogram_equalization,
+            "dynamic-world": dynamic_world_normalization,
+            "min-max": normalize_min_max_image,
+            "percentile": normalize_percentile,
+            "percentile-per-channel": normalize_percentile_per_channel,
+        }
+
+        if self.normalize_conf in normalize_functions:
+            return normalize_functions[self.normalize_conf](image)
 
 
 class CustomGeoDataModule(pl.LightningDataModule):
@@ -20,12 +67,14 @@ class CustomGeoDataModule(pl.LightningDataModule):
         patch_size: int,
         length_train: int,
         length_validate: int,
+        normalize_conf: str,
         num_workers: int = 4,
         train_transform=None,
         val_transform=None,
     ):
         super().__init__()
         self.save_hyperparameters(ignore=["train_transform", "val_transform"])
+        self.normalize_conf = normalize_conf
 
         # Store parameters
         self.batch_size = batch_size
@@ -63,7 +112,15 @@ class CustomGeoDataModule(pl.LightningDataModule):
                 paths=str(self.train_mask_path), crs="epsg:32633", res=10
             )
             train_masks.is_image = False
-            self.train_dataset = train_imgs & train_masks
+
+            combined_dataset = train_imgs & train_masks
+
+            if self.normalize_conf:
+                self.train_dataset = NormalizedRasterDataset(
+                    combined_dataset, normalize_conf=self.normalize_conf
+                )
+            else:
+                self.train_dataset = combined_dataset
 
             if len(self.train_dataset) == 0:
                 raise ValueError("Train dataset is empty!")
@@ -84,7 +141,14 @@ class CustomGeoDataModule(pl.LightningDataModule):
                 paths=str(self.val_mask_path), crs="epsg:32633", res=10
             )
             val_masks.is_image = False
-            self.val_dataset = val_imgs & val_masks
+            combined_dataset = val_imgs & val_masks
+
+            if self.normalize_conf:
+                self.val_dataset = NormalizedRasterDataset(
+                    combined_dataset, normalize_conf=self.normalize_conf
+                )
+            else:
+                self.val_dataset = combined_dataset
 
             if len(self.val_dataset) == 0:
                 raise ValueError("Validation dataset is empty!")
@@ -190,4 +254,6 @@ class CustomGeoDataModule(pl.LightningDataModule):
             sample.pop("crs", None)
             sample.pop("bounds", None)
 
-        return stack_samples(augmented_samples)
+        stacked_batch = stack_samples(augmented_samples)
+
+        return stacked_batch
