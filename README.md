@@ -16,12 +16,12 @@ Finally, set up the paths in `configs/paths/default.yaml`. For instance:
 
 ## Train the model
 
+NOTE: You have to change the root path of the dataset in `configs/paths/default.yaml`
+
 To train the model:
 
 ```bash
-poetry run python src/main.py 
+poetry run python src/main.py
 ```
 
 The outputs of the training script (including the `pytorch-lightning` outputs) should be stored in an `output` directory.
-
-

@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 
@@ -20,9 +21,13 @@ torch.backends.cudnn.benchmark = True
 @hydra.main(version_base=None, config_path="../configs", config_name="config")
 def main(cfg):
     root = Path(cfg.paths.ROOT_PATH)
-    output_dir = HydraConfig.get().run.dir
+    # Convert output_dir to a Path object
+    output_dir = Path(HydraConfig.get().run.dir)
+
     logging.basicConfig(
-        filename=f"{output_dir}/training.log",
+        filename=str(
+            output_dir / "training.log"
+        ),  # Convert Path to string for filename
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
     )
@@ -35,8 +40,8 @@ def main(cfg):
     val_path_masks = root / "new_train_val_truth" / "val"
 
     # instantiate the transform
-    train_transform = build_transform(mode="train", normalize_conf=cfg.data.NORMALIZE)
-    val_transform = build_transform(mode="val", normalize_conf=cfg.data.NORMALIZE)
+    train_transform = build_transform(mode="train")
+    val_transform = build_transform(mode="val")
 
     data_module = CustomGeoDataModule(
         train_img_path=train_path_imgs,
@@ -49,7 +54,7 @@ def main(cfg):
         length_validate=cfg.training.LENGTH_VALIDATE,
         train_transform=train_transform,
         val_transform=val_transform,
-        standardize=cfg.data.STANDARDIZE,
+        normalize_conf=cfg.data.NORMALIZE,
     )
     data_module.setup("fit")
     data_module.setup("validate")
@@ -84,7 +89,24 @@ def main(cfg):
     )
 
     trainer.fit(model, datamodule=data_module)
-    trainer.validate(model, datamodule=data_module)
+    results = trainer.validate(model, datamodule=data_module)
+
+    metrics_txt_path = output_dir / "validation_metrics.txt"
+    with Path.open(metrics_txt_path, "w") as f:
+        f.write("Validation Metrics\n")
+        f.write("=" * 80 + "\n\n")
+
+        # Format the results in a readable table
+        for key, value in results[0].items():
+            f.write(f"{key:<40} {value:.6f}\n")
+
+    # Also save as JSON for programmatic access
+    metrics_json_path = output_dir / "validation_metrics.json"
+    with Path.open(metrics_json_path, "w") as f:
+        json.dump(results[0], f, indent=4)
+
+    logger.info(f"Validation metrics saved to {metrics_txt_path}")
+    logger.info("Training finished.")
 
 
 if __name__ == "__main__":

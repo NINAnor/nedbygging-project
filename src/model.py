@@ -16,20 +16,20 @@ from utils import CLASS_LABELS
 
 def dice_loss(pred, target, num_classes, smooth=1.0):
     """Computes Dice Loss for multi-class segmentation."""
-    pred = F.softmax(pred, dim=1)  # Apply softmax to get class probabilities
+    pred = F.softmax(pred, dim=1)  # apply softmax to get class probabilities
     target_one_hot = F.one_hot(target, num_classes).permute(0, 3, 1, 2).float()
 
     intersection = (pred * target_one_hot).sum(dim=(2, 3))
     union = pred.sum(dim=(2, 3)) + target_one_hot.sum(dim=(2, 3))
 
     dice = (2.0 * intersection + smooth) / (union + smooth)
-    return 1 - dice.mean()  # Dice Loss
+    return 1 - dice.mean()  # dice Loss
 
 
 def focal_loss(pred, target, alpha=0.25, gamma=2.0):
     """Computes Focal Loss for multi-class segmentation."""
     ce_loss = F.cross_entropy(pred, target, reduction="none")
-    pt = torch.exp(-ce_loss)  # Probability of correct class
+    pt = torch.exp(-ce_loss)  # probability of correct class
     focal = alpha * (1 - pt) ** gamma * ce_loss
     return focal.mean()
 
