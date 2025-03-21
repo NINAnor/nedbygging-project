@@ -1,1 +1,1 @@
-NORMALIZE: percentile # min-max, percentile, clahe, dynamic-world
+NORMALIZE: clahe # min-max, percentile, clahe, dynamic-world

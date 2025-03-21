@@ -201,8 +201,8 @@ class SegmentationModel(pl.LightningModule):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
 
 
-def load_model(checkpoint_path, num_classes, device):
-    model = get_model(num_classes)
+def load_model(model_cfg, checkpoint_path, num_classes, device):
+    model = get_model(model_cfg, num_classes)
     logger = logging.getLogger(__name__)
     logger.info(f"Loading model from {checkpoint_path}")
     # Load the saved state dict

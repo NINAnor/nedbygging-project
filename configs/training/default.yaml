@@ -2,6 +2,7 @@
 PATCH_SIZE: 256 # size of the model input image
 LENGTH_TRAIN: 50 # Number of bands in the image
 LENGTH_VALIDATE: 20
+LENGTH_TEST: 7
 BATCH_SIZE: 16 # to train the model
 
 # Training parameters:
