@@ -67,7 +67,6 @@ class CustomGeoDataModule(pl.LightningDataModule):
         val_img_path: Path = None,
         val_mask_path: Path = None,
         test_img_path: Path = None,
-        test_mask_path: Path = None,
         length_train: int = None,
         length_validate: int = None,
         length_test: int = None,
@@ -96,7 +95,6 @@ class CustomGeoDataModule(pl.LightningDataModule):
         self.val_transform = val_transform
         self.test_img_path = test_img_path
         self.test_transform = test_transform
-        self.test_mask_path = test_mask_path
 
         # Initialize datasets and samplers to None
         self.train_dataset = None
@@ -185,34 +183,6 @@ class CustomGeoDataModule(pl.LightningDataModule):
 
             if len(self.test_dataset) == 0:
                 raise ValueError("Test dataset is empty!")
-
-            self.test_sampler = GridGeoSampler(
-                dataset=self.test_dataset,
-                size=self.patch_size,
-                stride=self.patch_size,
-                units=Units.PIXELS,
-            )
-
-        if stage == "test_on_val":
-            # stage for testing on validation set
-            test_imgs = RasterDataset(
-                paths=str(self.test_img_path), crs="epsg:32633", res=10
-            )
-            test_masks = RasterDataset(
-                paths=str(self.test_mask_path), crs="epsg:32633", res=10
-            )
-            test_masks.is_image = False
-            combined_dataset = test_imgs & test_masks
-
-            if self.normalize_conf:
-                self.test_dataset = NormalizedRasterDataset(
-                    combined_dataset, normalize_conf=self.normalize_conf
-                )
-            else:
-                self.test_dataset = combined_dataset
-
-            if len(self.test_dataset) == 0:
-                raise ValueError("Validation dataset is empty!")
 
             self.test_sampler = GridGeoSampler(
                 dataset=self.test_dataset,
